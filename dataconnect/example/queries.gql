@@ -1,0 +1,29 @@
+mutation CreateNewItemType($userId: UUID!, $name: String!, $description: String!) @auth(level: USER) {
+  itemType_insert(data: {userId: $userId, name: $name, description: $description, createdAt_expr: "request.time"})
+}
+
+query GetItemTypesForUser($userId: UUID!) @auth(level: USER) {
+  itemTypes(where: {userId: {eq: $userId}}) {
+    id
+    name
+    description
+    createdAt
+  }
+}
+
+mutation UpdateItemUnitNotes($id: UUID!, $notes: String) @auth(level: USER) {
+  itemUnit_update(key: {id: $id}, data: {notes: $notes})
+}
+
+query GetItemsCreatedByUser($userId: UUID!) @auth(level: USER) {
+  items(where: {userId: {eq: $userId}}) {
+    id
+    name
+    description
+    createdAt
+    itemType {
+      id
+      name
+    }
+  }
+}

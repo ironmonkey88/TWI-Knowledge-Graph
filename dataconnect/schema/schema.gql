@@ -1,0 +1,45 @@
+type User @table {
+  displayName: String!
+  email: String!
+  createdAt: Timestamp!
+  photoUrl: String
+}
+
+type ItemType @table {
+  user: User!
+  name: String!
+  createdAt: Timestamp!
+  description: String
+}
+
+type CustomField @table {
+  itemType: ItemType!
+  name: String!
+  fieldType: String!
+  createdAt: Timestamp!
+  defaultValue: String
+}
+
+type Item @table {
+  user: User!
+  itemType: ItemType!
+  name: String!
+  createdAt: Timestamp!
+  description: String
+}
+
+type ItemUnit @table {
+  item: Item!
+  unitIdentifier: String!
+  createdAt: Timestamp!
+  currentLocation: String
+  notes: String
+}
+
+type ItemHistory @table {
+  itemUnit: ItemUnit!
+  user: User!
+  timestamp: Timestamp!
+  eventType: String!
+  details: String
+}

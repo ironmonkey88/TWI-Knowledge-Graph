@@ -14,11 +14,27 @@ import { IndexData, SourceFile } from '../types';
 const provider = new GoogleAuthProvider();
 
 export const loginWithGoogle = async (): Promise<void> => {
+  console.log("Attempting to sign in with Google...");
   try {
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    console.log("Google sign-in successful:", result);
+    const user = result.user;
+    console.log("User object:", user);
   } catch (error) {
     console.error("Error during Google sign-in:", error);
-    throw new Error("Failed to sign in with Google.");
+    // Log specific error properties if they exist
+    if (error instanceof Error) {
+        const firebaseError = error as any; // Cast to access potential Firebase-specific properties
+        console.error("Firebase error code:", firebaseError.code);
+        console.error("Firebase error message:", firebaseError.message);
+        // The email of the user's account used.
+        const email = firebaseError.customData?.email;
+        console.error("Firebase custom email data:", email);
+        // The AuthCredential type that was used.
+        const credential = GoogleAuthProvider.credentialFromError(firebaseError);
+        console.error("Firebase credential from error:", credential);
+    }
+    throw new Error("Failed to sign in with Google. Check the developer console for more details.");
   }
 };
 

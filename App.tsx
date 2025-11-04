@@ -5,7 +5,7 @@ import { ContentPanel } from './components/ContentPanel';
 import { DetailPanel } from './components/DetailPanel';
 import { Loader } from './components/Loader';
 import * as apiService from './services/apiService';
-import { IndexData, Category, BaseEntity, SourceFile, User } from './types';
+import { IndexData, Category, BaseEntity, SourceFile, User, SourceFileStatus } from './types';
 import { Timeline } from './components/Timeline';
 import { SourcesPanel } from './components/SourcesPanel';
 import { CharacterIcon, TimelineIcon, ResetIcon, AddIcon } from './components/icons/Icons';
@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [indexData, setIndexData] = useState<IndexData | null>(null);
   const [sources, setSources] = useState<SourceFile[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category>(Category.Characters);
@@ -77,29 +78,42 @@ const App: React.FC = () => {
       fileInputRef.current?.click();
   };
 
-  const handleProcessFiles = useCallback(async (files: FileList) => {
+  const handleProcessFiles = useCallback((files: FileList) => {
     if (!files || files.length === 0 || !user) return;
 
-    setAppState('processing');
+    const newFiles = Array.from(files);
+    setUploadingFiles(prev => [...prev, ...newFiles]);
     setError(null);
     setSelectedItem(null);
 
-    try {
-      setLoadingMessage(`Uploading ${files.length} file(s) to the cloud for analysis...`);
-      await apiService.uploadFiles(user.uid, files);
-      setAppState('ready'); // Processing is now on the backend
-      // Data will update via the listener
-    } catch (err) {
-      console.error("Caught error in App component:", err);
-      const errorMessage = err instanceof Error 
-        ? err.message 
-        : 'An unknown error occurred during file upload.';
-      setError(errorMessage);
-      setAppState('error');
-    } finally {
-      setLoadingMessage('');
-    }
+    // Don't await this call, let it run in the background
+    apiService.uploadFiles(user.uid, files)
+      .then(() => {
+        // Handle successful upload if needed, e.g., show a notification
+        console.log('All files uploaded successfully');
+      })
+      .catch(err => {
+        console.error("Caught error in App component during file upload:", err);
+        const errorMessage = err instanceof Error
+          ? err.message
+          : 'An unknown error occurred during file upload.';
+        setError(errorMessage);
+        setAppState('error'); // Or handle error in a less disruptive way
+      })
+      .finally(() => {
+        // Remove these specific files from the uploading list
+        setUploadingFiles(prev => prev.filter(f => !newFiles.includes(f)));
+      });
+
   }, [user]);
+
+  const handleReprocess = (sourceId: string) => {
+    // This is a placeholder for the actual reprocessing logic.
+    // In a real app, this would trigger a backend function.
+    console.log(`Reprocessing source ${sourceId}`);
+    setSources(prev => prev.map(s => s.id === sourceId ? { ...s, status: 'processing' } : s));
+  };
+
 
   const handleCategorySelect = (category: Category | 'sources') => {
     if (category === 'sources') {
@@ -163,6 +177,20 @@ const App: React.FC = () => {
     return Object.values(indexData).every(arr => Array.isArray(arr) && arr.length === 0);
   }, [indexData]);
   
+  useEffect(() => {
+    // Simulate file processing for any file with 'processing' status
+    const processingSources = sources.filter(s => s.status === 'processing');
+    if (processingSources.length === 0) return;
+
+    const timer = setTimeout(() => {
+      setSources(prev => prev.map(s => 
+        s.status === 'processing' ? { ...s, status: 'completed', progress: 100 } : s
+      ));
+    }, 3000); // Simulate a 3-second processing time
+
+    return () => clearTimeout(timer);
+  }, [sources]);
+
   if (appState === 'initializing' || appState === 'processing') {
     return (
         <div className="w-screen h-screen flex items-center justify-center p-8">
@@ -174,6 +202,8 @@ const App: React.FC = () => {
   if (!user) {
     return <LoginScreen onLoginAttempt={apiService.loginWithGoogle} />;
   }
+  
+  const isProcessing = uploadingFiles.length > 0;
 
   const renderMainContent = () => {
     if (appState === 'error') {
@@ -204,7 +234,7 @@ const App: React.FC = () => {
     }
 
     if (view === 'sources') {
-        return <SourcesPanel sources={sources} onAddFiles={handleAddFilesClick} />;
+        return <SourcesPanel sources={sources} uploadingFiles={uploadingFiles} onAddFiles={handleAddFilesClick} onReprocess={handleReprocess} />;
     }
 
     // Encyclopedia View
@@ -221,7 +251,7 @@ const App: React.FC = () => {
             onLinkClick={handleLinkClick} 
             isDataEmpty={isDataEmpty}
             onAddFiles={handleAddFilesClick}
-            isProcessing={appState !== 'ready'}
+            isProcessing={isProcessing}
             sources={sources}
             onViewOnTimeline={handleViewOnTimeline}
         />
@@ -239,7 +269,7 @@ const App: React.FC = () => {
         multiple
         accept=".txt,.epub"
         className="hidden"
-        disabled={appState !== 'ready'}
+        disabled={isProcessing}
       />
       <header className="text-center p-4 border-b-2 border-amber-800 shadow-lg shadow-amber-900/50 relative flex items-center justify-between">
          <div className="flex-1 flex justify-start">
@@ -262,7 +292,7 @@ const App: React.FC = () => {
                     className="p-2 rounded-md text-sm transition-colors text-amber-200 hover:bg-stone-700 disabled:opacity-50"
                     aria-label="Add More Files"
                     title="Add More Files"
-                    disabled={appState !== 'ready'}
+                    disabled={isProcessing}
                 >
                     <AddIcon className="h-5 w-5" />
                 </button>
@@ -310,3 +340,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

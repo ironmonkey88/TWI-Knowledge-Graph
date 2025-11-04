@@ -34,7 +34,7 @@ if (!geminiApiKey) {
 }
 const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
-const CHUNK_SIZE = 40000;
+const CHUNK_SIZE = 15000;
 
 // (Code for schema, system instruction, merging, etc. would go here,
 // similar to the original geminiService.ts but adapted for Node.js)

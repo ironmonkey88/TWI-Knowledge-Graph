@@ -1,0 +1,98 @@
+mutation CreateSeedData @transaction @auth(level: PUBLIC, insecureReason: "This operation is used to seed the database with initial data and is safe to expose to the public.") {
+  user_insertMany(data: [
+    {
+      id: "67747495-2e8c-4508-a378-9ef8d9976e29",
+      displayName: "demouser1",
+      email: "demouser1@example.com",
+      createdAt: "2024-04-26T12:00:00Z"
+    },
+    {
+      id: "86442953-581f-4c98-b862-7048208f8f13",
+      displayName: "demouser2",
+      email: "demouser2@example.com",
+      createdAt: "2024-04-26T13:00:00Z"
+    }
+  ])
+  itemType_insertMany(data: [
+    {
+      id: "4c7a8f0b-074a-489c-82fa-16c503b3b122",
+      userId: "67747495-2e8c-4508-a378-9ef8d9976e29",
+      name: "Example ItemType 1",
+      description: "Example ItemType 1 Description",
+      createdAt: "2024-04-26T14:00:00Z"
+    },
+    {
+      id: "56b61a9c-0d36-4e29-8d36-698e2799a5f7",
+      userId: "86442953-581f-4c98-b862-7048208f8f13",
+      name: "Example ItemType 2",
+      description: "Example ItemType 2 Description",
+      createdAt: "2024-04-26T15:00:00Z"
+    }
+  ])
+  item_insertMany(data: [
+    {
+      id: "964d6946-8e85-4c1e-ace6-a253f5186295",
+      itemTypeId: "4c7a8f0b-074a-489c-82fa-16c503b3b122",
+      userId: "67747495-2e8c-4508-a378-9ef8d9976e29",
+      name: "Example Item 1",
+      description: "Example Item 1 Description",
+      createdAt: "2024-04-26T16:00:00Z"
+    },
+    {
+      id: "2c648b0e-7358-4448-8459-a17c74bb0a4d",
+      itemTypeId: "56b61a9c-0d36-4e29-8d36-698e2799a5f7",
+      userId: "86442953-581f-4c98-b862-7048208f8f13",
+      name: "Example Item 2",
+      description: "Example Item 2 Description",
+      createdAt: "2024-04-26T17:00:00Z"
+    }
+  ])
+  itemUnit_insertMany(data: [
+    {
+      id: "0c7a8a4f-e661-4377-a47e-0a9346c8a481",
+      itemId: "964d6946-8e85-4c1e-ace6-a253f5186295",
+      unitIdentifier: "item1_unit1",
+      createdAt: "2024-04-26T18:00:00Z"
+    },
+    {
+      id: "46b6647b-5c0f-4b41-99f4-4c082a17b299",
+      itemId: "2c648b0e-7358-4448-8459-a17c74bb0a4d",
+      unitIdentifier: "item2_unit1",
+      createdAt: "2024-04-26T19:00:00Z"
+    }
+  ])
+  itemHistory_insertMany(data: [
+    {
+      id: "7a6a6375-a889-4a18-9096-4d3790288692",
+      itemUnitId: "0c7a8a4f-e661-4377-a47e-0a9346c8a481",
+      userId: "67747495-2e8c-4508-a378-9ef8d9976e29",
+      eventType: "created",
+      details: "item1_unit1 created",
+      timestamp: "2024-04-26T20:00:00Z"
+    },
+    {
+      id: "6d157175-0e63-4c27-85b7-b243a9c56699",
+      itemUnitId: "46b6647b-5c0f-4b41-99f4-4c082a17b299",
+      userId: "86442953-581f-4c98-b862-7048208f8f13",
+      eventType: "created",
+      details: "item2_unit1 created",
+      timestamp: "2024-04-26T21:00:00Z"
+    }
+  ])
+ customField_insertMany(data: [
+    {
+      id: "5e57f4e0-f449-4781-a09a-d75545a8d38a",
+      itemTypeId: "4c7a8f0b-074a-489c-82fa-16c503b3b122",
+      name: "exampleCustomField1",
+      fieldType: "text",
+      createdAt: "2024-04-26T22:00:00Z"
+    },
+        {
+      id: "23bbef9f-4141-4096-99d0-42e5e28f778a",
+      itemTypeId: "56b61a9c-0d36-4e29-8d36-698e2799a5f7",
+      name: "exampleCustomField2",
+      fieldType: "number",
+      createdAt: "2024-04-26T23:00:00Z"
+    }
+  ])
+}

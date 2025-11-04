@@ -51,11 +51,14 @@ export interface IndexData {
   locations: Location[];
 }
 
+export type SourceFileStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
 export interface SourceFile {
     id: string;
     name: string;
     type: string;
-    // content is no longer stored on the client
+    status: SourceFileStatus;
+    progress?: number; // Optional progress percentage (0-100)
 }
 
 export enum Category {

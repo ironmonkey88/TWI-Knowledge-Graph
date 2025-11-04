@@ -2,7 +2,7 @@ import React from 'react';
 import { Category, BaseEntity, Character, PlotPoint, MagicItem, Monster, Battle, Location, Link, Citation, SourceFile } from '../types';
 import { CATEGORY_DETAILS } from '../constants';
 import { FileUpload } from './FileUpload';
-import { TimelineIcon } from './icons/Icons';
+import { TimelineIcon, UploadIcon } from './icons/Icons';
 
 interface DetailPanelProps {
   item: BaseEntity | null;
@@ -71,32 +71,53 @@ const CitationsSection: React.FC<{ citations: Citation[], sources: SourceFile[] 
 
 
 export const DetailPanel: React.FC<DetailPanelProps> = ({ item, onLinkClick, isDataEmpty, onAddFiles, isProcessing, sources, onViewOnTimeline }) => {
-  if (!item) {
-    if (isDataEmpty) {
-        return (
-            <div className="w-full md:w-2/3 flex items-center justify-center p-8">
-                <div className="text-center max-w-2xl">
-                    <h2 className="text-3xl font-fancy text-amber-200 mb-4">Welcome, Innkeeper!</h2>
-                    <p className="mb-6 text-lg text-amber-100/80">
-                    To build your encyclopedia, upload your book files. The AI will read them in the cloud and index everything for you.
-                    </p>
-                    <FileUpload onAddFiles={onAddFiles} disabled={isProcessing} />
+  
+  const renderInitialView = () => {
+      if (isProcessing) {
+          return (
+              <div className="text-center max-w-2xl">
+                    <h2 className="text-3xl font-fancy text-amber-200 mb-4">Hold on tight...</h2>
+                     <div className="flex items-center justify-center space-x-3 my-6">
+                        <UploadIcon className="h-8 w-8 text-amber-400 animate-pulse" />
+                        <p className="text-lg text-amber-100/80">
+                            Your files are being uploaded and processed in the cloud.
+                        </p>
+                     </div>
                     <p className="mt-6 text-sm text-stone-400">
-                    Your encyclopedia is saved to your account and is accessible from any device.
+                        This can take a few minutes for large books. Feel free to browse your existing encyclopedia while you wait.
                     </p>
                 </div>
+          )
+      }
+      if (isDataEmpty) {
+        return (
+            <div className="text-center max-w-2xl">
+                <h2 className="text-3xl font-fancy text-amber-200 mb-4">Welcome, Innkeeper!</h2>
+                <p className="mb-6 text-lg text-amber-100/80">
+                To build your encyclopedia, upload your book files. The AI will read them in the cloud and index everything for you.
+                </p>
+                <FileUpload onAddFiles={onAddFiles} disabled={isProcessing} />
+                <p className="mt-6 text-sm text-stone-400">
+                Your encyclopedia is saved to your account and is accessible from any device.
+                </p>
             </div>
         );
     }
 
     return (
-      <div className="w-full md:w-2/3 flex items-center justify-center p-8 text-center">
-        <div className="max-w-md">
-            <h2 className="text-3xl font-fancy text-amber-200">Select an Entry</h2>
-            <p className="text-stone-300 mt-2">Choose an item from the list to see its details here.</p>
-            <img src="https://images.unsplash.com/photo-1456324504439-367cee3b3c32?q=80&w=800&auto=format&fit=crop" alt="An old open book" className="rounded-lg mt-6 opacity-40 mx-auto shadow-lg" />
-        </div>
+      <div className="max-w-md">
+          <h2 className="text-3xl font-fancy text-amber-200">Select an Entry</h2>
+          <p className="text-stone-300 mt-2">Choose an item from the list to see its details here.</p>
+          <img src="https://images.unsplash.com/photo-1456324504439-367cee3b3c32?q=80&w=800&auto=format&fit=crop" alt="An old open book" className="rounded-lg mt-6 opacity-40 mx-auto shadow-lg" />
       </div>
+    );
+  }
+
+  if (!item) {
+    return (
+        <div className="w-full md:w-2/3 flex items-center justify-center p-8">
+            {renderInitialView()}
+        </div>
     );
   }
   
