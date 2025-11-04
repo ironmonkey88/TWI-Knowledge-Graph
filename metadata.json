@@ -1,0 +1,5 @@
+{
+  "name": "Wandering Inn Companion",
+  "description": "An AI-powered companion website for 'The Wandering Inn' series. Upload book chapters as text files to index characters, items, plot points, and more, creating a searchable encyclopedia of the world.",
+  "requestFramePermissions": []
+}
