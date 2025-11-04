@@ -55,6 +55,7 @@ export interface SourceFile {
     id: string;
     name: string;
     type: string;
+    // content is no longer stored on the client
 }
 
 export enum Category {
@@ -64,4 +65,11 @@ export enum Category {
   Monsters = 'monsters',
   Battles = 'battles',
   Locations = 'locations',
+}
+
+export interface User {
+    uid: string;
+    displayName: string | null;
+    email: string | null;
+    photoURL: string | null;
 }

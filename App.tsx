@@ -1,20 +1,24 @@
+
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ContentPanel } from './components/ContentPanel';
 import { DetailPanel } from './components/DetailPanel';
 import { Loader } from './components/Loader';
-import * as dbService from './services/dbService';
-import * as geminiService from './services/geminiService';
-import { IndexData, Category, BaseEntity, SourceFile } from './types';
+import * as apiService from './services/apiService';
+import { IndexData, Category, BaseEntity, SourceFile, User } from './types';
 import { Timeline } from './components/Timeline';
 import { SourcesPanel } from './components/SourcesPanel';
 import { CharacterIcon, TimelineIcon, ResetIcon, AddIcon } from './components/icons/Icons';
+import { LoginScreen } from './components/LoginScreen';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './services/firebaseService';
 
 type AppState = 'initializing' | 'processing' | 'error' | 'ready';
 type View = 'encyclopedia' | 'timeline' | 'sources';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('initializing');
+  const [user, setUser] = useState<User | null>(null);
   const [indexData, setIndexData] = useState<IndexData | null>(null);
   const [sources, setSources] = useState<SourceFile[]>([]);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -25,31 +29,41 @@ const App: React.FC = () => {
   const [timelineFilters, setTimelineFilters] = useState<BaseEntity[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadData = async () => {
-    try {
-        setAppState('initializing');
-        setLoadingMessage('Loading encyclopedia from your browser...');
-        await dbService.initDB();
-        const [data, sourceFiles] = await Promise.all([
-            dbService.loadEncyclopedia(),
-            dbService.loadSources()
-        ]);
-        if (data) setIndexData(data);
-        if (sourceFiles) setSources(sourceFiles);
-    } catch (err) {
-        console.error("Failed to load data from DB", err);
-        setError("Could not load your encyclopedia from the browser's database.");
-        setAppState('error');
-    } finally {
-        setAppState('ready');
-        setLoadingMessage('');
-    }
-  };
-
   useEffect(() => {
-    loadData();
+    setLoadingMessage("Authenticating...");
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const currentUser = {
+          uid: firebaseUser.uid,
+          displayName: firebaseUser.displayName,
+          email: firebaseUser.email,
+          photoURL: firebaseUser.photoURL,
+        };
+        setUser(currentUser);
+        setLoadingMessage("Loading your encyclopedia from the cloud...");
+        try {
+          // Listen for realtime updates
+          apiService.listenForData(currentUser.uid, (data, sourceFiles) => {
+            setIndexData(data);
+            setSources(sourceFiles);
+            setAppState('ready');
+            setLoadingMessage('');
+          });
+        } catch(err) {
+            console.error("Failed to load data from Firebase", err);
+            setError("Could not load your encyclopedia from the cloud.");
+            setAppState('error');
+        }
+      } else {
+        setUser(null);
+        setIndexData(null);
+        setSources([]);
+        setAppState('ready');
+      }
+    });
+    return () => unsubscribe();
   }, []);
-  
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       if (event.target.files && event.target.files.length > 0) {
           handleProcessFiles(event.target.files);
@@ -64,34 +78,28 @@ const App: React.FC = () => {
   };
 
   const handleProcessFiles = useCallback(async (files: FileList) => {
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || !user) return;
 
     setAppState('processing');
     setError(null);
     setSelectedItem(null);
 
     try {
-      const { updatedData, updatedSources } = await geminiService.processFiles(
-        files,
-        indexData,
-        (message: string) => setLoadingMessage(message)
-      );
-      
-      setIndexData(updatedData);
-      setSources(updatedSources);
-      setAppState('ready');
-
+      setLoadingMessage(`Uploading ${files.length} file(s) to the cloud for analysis...`);
+      await apiService.uploadFiles(user.uid, files);
+      setAppState('ready'); // Processing is now on the backend
+      // Data will update via the listener
     } catch (err) {
       console.error("Caught error in App component:", err);
       const errorMessage = err instanceof Error 
         ? err.message 
-        : 'An unknown error occurred during file processing.';
+        : 'An unknown error occurred during file upload.';
       setError(errorMessage);
       setAppState('error');
     } finally {
-        setLoadingMessage('');
+      setLoadingMessage('');
     }
-  }, [indexData]);
+  }, [user]);
 
   const handleCategorySelect = (category: Category | 'sources') => {
     if (category === 'sources') {
@@ -110,7 +118,6 @@ const App: React.FC = () => {
 
   const handleLinkClick = (id: string) => {
     if (!indexData) return;
-
     for (const category of Object.keys(indexData) as Category[]) {
         const items = indexData[category];
         if (Array.isArray(items)) {
@@ -127,23 +134,18 @@ const App: React.FC = () => {
   };
 
   const handleResetApp = async () => {
-    const confirmed = window.confirm("Are you sure you want to start over? This will permanently delete your entire encyclopedia and all source files from this browser.");
+    if (!user) return;
+    const confirmed = window.confirm("Are you sure you want to start over? This will permanently delete your entire encyclopedia and all source files from your account.");
     if (confirmed) {
         try {
             setAppState('processing');
-            setLoadingMessage('Deleting all data from your browser...');
-            await dbService.clearAllData();
-            setIndexData(null);
-            setSources([]);
-            setError(null);
-            setSelectedItem(null);
-            setView('encyclopedia');
-            setSelectedCategory(Category.Characters);
-            setTimelineFilters([]);
+            setLoadingMessage('Deleting all data from your account...');
+            await apiService.resetData(user.uid);
+            // Listener will update state to empty
             setAppState('ready');
         } catch (err) {
             console.error("Failed to clear data:", err);
-            setError("Could not clear the browser database. Please try again.");
+            setError("Could not clear your account data. Please try again.");
             setAppState('error');
         } finally {
             setLoadingMessage('');
@@ -160,6 +162,18 @@ const App: React.FC = () => {
     if (!indexData) return true;
     return Object.values(indexData).every(arr => Array.isArray(arr) && arr.length === 0);
   }, [indexData]);
+  
+  if (appState === 'initializing' || appState === 'processing') {
+    return (
+        <div className="w-screen h-screen flex items-center justify-center p-8">
+            <Loader message={loadingMessage || "Please wait..."} />
+        </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen onLoginAttempt={apiService.loginWithGoogle} />;
+  }
 
   const renderMainContent = () => {
     if (appState === 'error') {
@@ -169,7 +183,7 @@ const App: React.FC = () => {
             <h2 className="text-2xl font-bold mb-2">An Error Occurred</h2>
             <p>{error}</p>
              <button
-                onClick={loadData} // Allow user to try reloading data
+                onClick={() => window.location.reload()} // Simple reload to retry
                 className="mt-4 px-6 py-2 bg-amber-600 text-stone-900 font-bold rounded-lg shadow-md hover:bg-amber-500"
             >
                 Try Again
@@ -207,7 +221,7 @@ const App: React.FC = () => {
             onLinkClick={handleLinkClick} 
             isDataEmpty={isDataEmpty}
             onAddFiles={handleAddFilesClick}
-            isProcessing={appState === 'processing'}
+            isProcessing={appState !== 'ready'}
             sources={sources}
             onViewOnTimeline={handleViewOnTimeline}
         />
@@ -215,13 +229,6 @@ const App: React.FC = () => {
     );
   }
 
-  if (appState === 'initializing' || appState === 'processing') {
-    return (
-        <div className="w-screen h-screen flex items-center justify-center p-8">
-            <Loader message={loadingMessage || "Please wait..."} />
-        </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-stone-900 text-amber-100 flex flex-col">
@@ -232,11 +239,18 @@ const App: React.FC = () => {
         multiple
         accept=".txt,.epub"
         className="hidden"
-        disabled={appState === 'processing'}
+        disabled={appState !== 'ready'}
       />
       <header className="text-center p-4 border-b-2 border-amber-800 shadow-lg shadow-amber-900/50 relative flex items-center justify-between">
-         {/* Header is now simplified as loading is a full-screen overlay */}
-        <div className="flex-1"></div>
+         <div className="flex-1 flex justify-start">
+            <div className="flex items-center space-x-2">
+                <img src={user.photoURL ?? undefined} alt={user.displayName ?? 'User'} className="h-10 w-10 rounded-full border-2 border-amber-700" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-100">{user.displayName}</p>
+                   <button onClick={apiService.logout} className="text-xs text-stone-400 hover:text-amber-300">Sign out</button>
+                </div>
+            </div>
+         </div>
         <div className="text-center flex-1">
           <h1 className="text-4xl font-fancy text-amber-300">The Wandering Inn Companion</h1>
           <p className="text-amber-200 text-sm">AI-Powered Encyclopedia</p>
@@ -248,7 +262,7 @@ const App: React.FC = () => {
                     className="p-2 rounded-md text-sm transition-colors text-amber-200 hover:bg-stone-700 disabled:opacity-50"
                     aria-label="Add More Files"
                     title="Add More Files"
-                    disabled={appState === 'processing'}
+                    disabled={appState !== 'ready'}
                 >
                     <AddIcon className="h-5 w-5" />
                 </button>

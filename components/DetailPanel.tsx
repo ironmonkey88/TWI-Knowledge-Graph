@@ -78,11 +78,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({ item, onLinkClick, isD
                 <div className="text-center max-w-2xl">
                     <h2 className="text-3xl font-fancy text-amber-200 mb-4">Welcome, Innkeeper!</h2>
                     <p className="mb-6 text-lg text-amber-100/80">
-                    To build your encyclopedia, upload the book files in <strong>.txt</strong> or <strong>.epub</strong> format. The AI will read them and index everything for you.
+                    To build your encyclopedia, upload your book files. The AI will read them in the cloud and index everything for you.
                     </p>
                     <FileUpload onAddFiles={onAddFiles} disabled={isProcessing} />
                     <p className="mt-6 text-sm text-stone-400">
-                    Note: Processing happens in your browser and can take several minutes for large files. You can upload multiple files at once. Your encyclopedia is saved to this browser only.
+                    Your encyclopedia is saved to your account and is accessible from any device.
                     </p>
                 </div>
             </div>
